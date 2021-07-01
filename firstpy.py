@@ -6,9 +6,22 @@ import pyautogui as pag
 from PIL import ImageGrab
 import time
 import keyboard
+import cv2 as cv
 
 chrome_driver = 'chromedriver.exe'
 driver = webdriver.Chrome(chrome_driver)
+
+def capture_start():
+    seat1_frame = driver.find_element_by_name("ifrmSeat")
+    driver.switch_to_frame(seat1_frame)
+    image = driver.find_element_by_id('imgCaptcha')
+    for i in range(0, 1):
+        image2 = image.screenshot_as_png
+        with open("%d.png" % i, "wb") as file:
+            file.write(image2)
+            return image2
+        # driver.find_element_by_class_name('refreshBtn').click()
+
 driver.set_window_size(1400, 1200)
 driver.get('https://ticket.interpark.com/Gate/TPLogin.asp?CPage=B&MN=Y&tid1=main_gnb&tid2=right_top&tid3=login&tid4=login')
 driver.implicitly_wait(3)
@@ -17,7 +30,7 @@ driver.switch_to.frame(driver.find_element(By.XPATH, "//div[@class='leftLoginBox
 userId = driver.find_element(By.ID, 'userId')
 userId.send_keys('bin2716') # 로그인 할 계정 id
 userPwd = driver.find_element(By.ID, 'userPwd')
-userPwd.send_keys('tlrnr1003@') # 로그인 할 계정의 패스워드
+userPwd.send_keys('gksqls0823!') # 로그인 할 계정의 패스워드
 userPwd.send_keys(Keys.ENTER)
 
 
@@ -54,7 +67,20 @@ driver.get_window_position(driver.window_handles[1])
 
 ##########################################################
 pag.click(441, 535)                                #catcha
+capture_start()
+img = cv.imread('0.png', cv.IMREAD_GRAYSCALE)
+cv.imshow('original', img)
+
+
+cv.waitKey(0)
+cv.destroyAllWindows()
 ##########################################################
+
+# while(True):
+#     if keyboard.is_pressed('1'):
+#        break
+#    else:
+#        pass
 
 def color(RGB):  # RGB 값을 색깔 문자열로 반환하는 함수
     c_p = (124, 104, 238)
@@ -71,11 +97,7 @@ def color(RGB):  # RGB 값을 색깔 문자열로 반환하는 함수
     elif RGB == test: return "test"
     else: return "other"
 SB=0
-while(True):
-    if keyboard.is_pressed('1'):
-        break
-    else:
-        pass
+
 
 print("here!!!!!!!!!!")
 while SB==0:
