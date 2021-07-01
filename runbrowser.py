@@ -9,7 +9,7 @@ class Browser:
         self.port = port
         self.temp = temp
         self.chrome_start = 'start chrome.exe --remote-debugging-port='+self.port+' --user-data-dir="'+self.temp+'/'+self.port+'"'
-        self.chrome_close = 'FOR /F "tokens=5 delims= " %%I IN ('netstat -ano ^| find ":'+port\
+        self.chrome_close = 'FOR /F "tokens=5 delims= " %%I IN ('netstat -ano ^| find '":'+port\
                             +'" ^| find "CLOSE_WAIT"') DO (taskkill /F /PID %%I)'
 
     def run(self):
