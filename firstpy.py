@@ -4,9 +4,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import pyautogui as pag
 from PIL import ImageGrab
+from PIL import Image
 import time
 import keyboard
 import cv2 as cv
+import pytesseract
+
+
 
 chrome_driver = 'chromedriver.exe'
 driver = webdriver.Chrome(chrome_driver)
@@ -21,6 +25,14 @@ def capture_start():
             file.write(image2)
             return image2
         # driver.find_element_by_class_name('refreshBtn').click()
+
+def existsElement():
+    try :
+        capture_start()
+    except :
+        return False
+    return True
+
 
 driver.set_window_size(1400, 1200)
 driver.get('https://ticket.interpark.com/Gate/TPLogin.asp?CPage=B&MN=Y&tid1=main_gnb&tid2=right_top&tid3=login&tid4=login')
@@ -46,7 +58,7 @@ time.sleep(0.2)
 pag.click(1225, 430) #8월
 time.sleep(0.2)
 pag.click(1160, 491) #4일
-time.sleep(0.2)
+time.sleep(0.3)
 MB = True
 while MB:
     resbutton = driver.find_element_by_xpath('//*[@id="productSide"]/div/div[2]/a[1]')
@@ -62,25 +74,60 @@ while MB:
 
 time.sleep(1)
 # 예매하기 눌러서 새창이 뜨면 포커스를 새창으로 변경
-driver.switch_to.window(driver.window_handles[1])
-driver.get_window_position(driver.window_handles[1])
+# driver.switch_to.window(driver.window_handles[1])
+# driver.get_window_position(driver.window_handles[1])
+
 
 ##########################################################
-pag.click(441, 535)                                #catcha
-capture_start()
-img = cv.imread('0.png', cv.IMREAD_GRAYSCALE)
-cv.imshow('original', img)
+                  #catcha#
+cnt = 0
+is_captcha = True
+while(is_captcha):
+    # 예매하기 눌러서 새창이 뜨면 포커스를 새창으로 변경
+    print('start_capthca')
+    driver.switch_to.window(driver.window_handles[1])
+    driver.get_window_position(driver.window_handles[1])
+
+    capture_start()
+    org_img = cv.imread('0.png', cv.IMREAD_GRAYSCALE)
+    # cv.imshow('original', org_img)
+
+    threshold, mask = cv.threshold(org_img, 150, 255, cv.THRESH_BINARY)
+
+    # cv.imshow('binary', mask)
+    blur = cv.medianBlur(mask,3)
+    # cv.imshow('median1', blur1)
+    # cv.waitKey(0)
+    # cv.destroyAllWindows()
+
+    cv.imwrite('1.png', blur)
+    text = pytesseract.image_to_string(Image.open('1.png'), lang='eng')
+
+    pag.click(441, 535)
+    pag.write(text)
+    print(text)
 
 
-cv.waitKey(0)
-cv.destroyAllWindows()
+
 ##########################################################
+    driver.switch_to.window(driver.window_handles[1])
+    driver.get_window_position(driver.window_handles[1])
+    is_captcha = existsElement()
+    print(is_captcha)
 
+    if(is_captcha==True) :
+        cnt += 1
+        cv.imwrite('fail%d.png'%cnt, blur)
+        driver.find_element_by_class_name('refreshBtn').click()
+
+#########################################################
 # while(True):
 #     if keyboard.is_pressed('1'):
 #        break
 #    else:
 #        pass
+
+
 
 def color(RGB):  # RGB 값을 색깔 문자열로 반환하는 함수
     c_p = (124, 104, 238)
