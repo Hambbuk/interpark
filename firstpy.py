@@ -13,6 +13,7 @@ import keyboard
 import cv2 as cv
 import pytesseract
 import re
+import numpy as np
 
 
 chrome_driver = 'chromedriver.exe'
@@ -89,7 +90,11 @@ driver.get('http://ticket.interpark.com/Ticket/Goods/GoodsInfo.asp?GoodsCode=' +
 # pag.click(1160, 491) #4일
 # time.sleep(0.3)
 # #########################################################
-
+# 팝업창 뜨면 끄기
+try:
+    driver.find_element_by_xpath('//*[@id="popup-prdGuide"]/div/div[3]/button').click()
+except:
+    pass
 
 MB = True
 
@@ -106,7 +111,15 @@ while True:
         msec = re.findall("[0-9]", b)
         if(int(msec[0])>=0):
             break
+
 ##########################################################
+#driver.find_element_by_xpath('(//*[@id="CellPlayDate"])' + "[" + "20210812" + "]").click()
+
+################날짜 선택############################################################################################
+driver.find_element_by_xpath('//*[@id="productSide"]/div/div[1]/div[1]/div[2]/div/div/div/div/ul[1]/li[3]').click() # 다음달(8월)
+time.sleep(0.1)
+driver.find_element_by_xpath('(//*[@id="productSide"]/div/div[1]/div[1]/div[2]/div/div/div/div/ul[3]/li[12])').click() # 12일
+
 
 while MB:
     resbutton = driver.find_element_by_xpath('//*[@id="productSide"]/div/div[2]/a[1]')
@@ -137,30 +150,57 @@ while(is_captcha):
     driver.get_window_position(driver.window_handles[1])
     
     capture_start()
-    
-    org_img = cv.imread('0.png', cv.IMREAD_GRAYSCALE)
-    # cv.imshow('original', org_img)
+    #########################OLD_OPENCV##########################################
+    # org_img = cv.imread('0.png', cv.IMREAD_GRAYSCALE)
+    # # cv.imshow('original', org_img)
+    #
+    # threshold, mask = cv.threshold(org_img, 150, 255, cv.THRESH_BINARY)
+    #
+    # # cv.imshow('binary', mask)
+    # blur = cv.medianBlur(mask,3)
+    # # cv.imshow('median1', blur1)
+    # # cv.waitKey(0)
+    # # cv.destroyAllWindows()
+    #
+    # # cv.imwrite('1.png', blur)
+    # # # text = pytesseract.image_to_string(Image.open('1.png'), lang='eng')
+    # # text = pytesseract.image_to_string(Image.open('1.png')
+    # #                                    , config = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    # #                                    , lang='eng')
+    ###################################################################################################
 
-    threshold, mask = cv.threshold(org_img, 150, 255, cv.THRESH_BINARY)
 
-    # cv.imshow('binary', mask)
-    blur = cv.medianBlur(mask,3)
-    # cv.imshow('median1', blur1)
-    # cv.waitKey(0)
-    # cv.destroyAllWindows()
+    #####################################NEW_OPENCV######################################################
+    # Load image, grayscale, adaptive threshold
+    image = cv.imread('0.png')
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    thresh = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 85, 1)
 
-    # cv.imwrite('1.png', blur)
-    # # text = pytesseract.image_to_string(Image.open('1.png'), lang='eng')
-    # text = pytesseract.image_to_string(Image.open('1.png')
-    #                                    , config = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    #                                    , lang='eng')
+    # Morph open
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
+    opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=1)
 
-    text = pytesseract.image_to_string(blur
+    # Remove noise by filtering using contour area
+    cnts = cv.findContours(opening, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    for c in cnts:
+        area = cv.contourArea(c)
+        if area < 30:
+            cv.drawContours(opening, [c], -1, (0, 0, 0), -1)
+    kernel2 = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    opening = cv.filter2D(opening, -1, kernel2)
+
+    # Invert image for result
+    result = 255 - opening
+    cv.imwrite('1.png', result)
+    ##############################################################################################
+    text = pytesseract.image_to_string(result
                                        , config = "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                        , lang='eng')
-
-    pag.click(441, 535)
-    pag.write(text)
+    driver.find_element_by_class_name('validationTxt').click()
+    driver.find_element_by_xpath('// *[ @ id = "txtCaptcha"]').send_keys(text)
+    # pag.click(441, 535)
+    # pag.write(text)
     print(text)
 
 
@@ -174,7 +214,7 @@ while(is_captcha):
     if(is_captcha==True) :
         cnt += 1
         # 디버깅용 이미지 저장
-        # cv.imwrite('fail%d.png'%cnt, blur)
+        cv.imwrite('fail%d.png'%cnt, result)
         driver.find_element_by_class_name('refreshBtn').click()
 
 #########################################################
